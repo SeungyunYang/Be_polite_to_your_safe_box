@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Be polite to your safe box</title>
+  <link rel="stylesheet" href="css/main.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+  <script src="https://unpkg.com/ml5@1.12.2/dist/ml5.min.js"></script>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Be polite to your safe box</h1>
+      <p>금고에게 예의 바르게 — 인사하고, 3초 웃으면 금고가 열립니다</p>
+    </header>
+
+    <section class="controls">
+      <button id="btn-cam" type="button">카메라 시작</button>
+      <button id="btn-arduino" type="button">아두이노 연결</button>
+      <span id="status-arduino" class="status">아두이노: 미연결</span>
+    </section>
+
+    <section class="canvas-wrap">
+      <div id="canvas-container"></div>
+      <div id="overlay-info">
+        <div id="info-state" class="state state-idle">대기 — 인사해 주세요</div>
+        <div id="info-pose">Pose: 대기 중</div>
+        <div id="info-face">Face: 대기 중</div>
+        <div class="smile-progress-wrap">
+          <div id="smile-progress" class="smile-progress" style="width: 0%;"></div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <small>Pose(인사) · Facemesh(웃음 3초) · Arduino Nano (빨간/초록 LED, 서보 7°~90°)</small>
+    </footer>
+  </div>
+
+  <script src="js/arduinoBridge.js"></script>
+  <script src="js/poseDetection.js"></script>
+  <script src="js/facemesh.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

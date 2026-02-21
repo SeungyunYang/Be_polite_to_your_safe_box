@@ -1,0 +1,144 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #1a1a2e;
+  color: #eee;
+  min-height: 100vh;
+}
+
+#app {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+header h1 {
+  font-size: 1.5rem;
+  margin: 0 0 0.25rem 0;
+}
+
+header p {
+  margin: 0;
+  opacity: 0.8;
+  font-size: 0.9rem;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.controls button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background: #4a4a6a;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.controls button:hover {
+  background: #5a5a7a;
+}
+
+.controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.status {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.status.connected {
+  color: #6f6;
+}
+
+.canvas-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #0f0f1a;
+}
+
+#canvas-container {
+  width: 100%;
+  line-height: 0;
+}
+
+#canvas-container canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+#overlay-info {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.7);
+  font-size: 0.8rem;
+}
+
+.state {
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.state-idle {
+  color: #aaa;
+}
+
+.state-red_blink {
+  color: #f88;
+}
+
+.state-green_open {
+  color: #8f8;
+}
+
+#info-pose,
+#info-face {
+  margin: 0.15rem 0;
+}
+
+.smile-progress-wrap {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  margin-top: 0.4rem;
+  overflow: hidden;
+}
+
+.smile-progress {
+  height: 100%;
+  background: linear-gradient(90deg, #8f8, #6f6);
+  border-radius: 3px;
+  transition: width 0.15s ease-out;
+}
+
+footer {
+  text-align: center;
+  margin-top: 1.5rem;
+  opacity: 0.6;
+  font-size: 0.8rem;
+}
