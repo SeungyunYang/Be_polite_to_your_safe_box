@@ -136,6 +136,27 @@ header p {
   transition: width 0.15s ease-out;
 }
 
+.reset-info {
+  margin-top: 0.45rem;
+  font-size: 0.78rem;
+  color: #ddd;
+}
+
+.reset-progress-wrap {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  margin-top: 0.25rem;
+  overflow: hidden;
+}
+
+.reset-progress {
+  height: 100%;
+  background: linear-gradient(90deg, #ffe082, #ffc107);
+  border-radius: 3px;
+  transition: width 0.15s linear;
+}
+
 footer {
   text-align: center;
   margin-top: 1.5rem;

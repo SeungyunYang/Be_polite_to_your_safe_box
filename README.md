@@ -17,11 +17,11 @@
 
 금고 위에 **웹캠**을 단다.
 
-1. **사람이 인식되면** → 그 사람이 **허리를 숙여 인사**하는지 감지한다.
-2. **허리를 숙이면** → LED가 꺼져 있다가 **빨간색으로 깜빡인다**.
+1. **사람이 인식되면** → 그 사람이 **고개를 끄덕여 인사**하는지 감지한다.
+2. **인사를 감지하면** → LED가 **밝기 0~15 범위에서 숨쉬듯 디밍**한다.
 3. **사람이 금고에 가까이 다가와**, 카메라 앞에서 **3초간 웃음을 유지**하면  
    (facemesh 웃음 인식 기준에 맞춰)  
-   → LED가 **초록색**으로 바뀌고, **서보모터가 7°에서 90°로 회전**해 금고를 **자동으로 연다**.
+   → LED가 **흰색으로 계속 켜지고**, **서보모터가 7°에서 90°로 회전**해 금고를 **자동으로 연다**.
 
 정리하면, **진심의 존중이 아니라 할 수 있는 최소한의 성의**—허리 숙여 인사하고, 웃는 모습을 3초 보여주면—그때 비로소 로봇 금고가 가장 중요한 내부를 열어 주는 구조입니다.
 
@@ -29,9 +29,9 @@
 
 ## 기술 구성
 
-- **Pose Detection (ml5 poseNet)**: 허리 숙여 인사 감지
-- **Facemesh (ml5 facemesh)**: 웃음 감지 (입 랜드마크 기준, 3초 유지 시 열림)
-- **Arduino Nano**: 빨간/초록 LED, 서보모터(7°~90°) 시리얼 제어
+- **Pose Detection (ml5 bodyPose)**: 고개 끄덕임 인사 감지
+- **Facemesh (ml5 faceMesh)**: 웃음 감지 (입 랜드마크 기준, 3초 유지 시 열림)
+- **Arduino Nano**: 흰색 LED 1개, 서보모터(7°~90°) 시리얼 제어
 - **Web Serial API**: 브라우저(Chrome) ↔ 아두이노 통신
 
 ---
@@ -44,13 +44,13 @@ Be_polite_to_your_safe_box/
 ├── css/
 │   └── main.css            # 레이아웃/스타일
 ├── js/
-│   ├── poseDetection.js    # 포즈 감지 (poseNet) — 인사 판단은 main.js
-│   ├── facemesh.js         # 얼굴 랜드마크 (facemesh) — 웃음 판단은 main.js
+│   ├── poseDetection.js    # 포즈 감지 (bodyPose) — 인사 판단은 main.js
+│   ├── facemesh.js         # 얼굴 랜드마크 (faceMesh) — 웃음 판단은 main.js
 │   ├── arduinoBridge.js    # Web Serial → LED 모드(L0/L1/L2), 서보
-│   └── main.js             # 흐름 제어: 인사 → 빨간 깜빡임 → 3초 웃음 → 초록 + 서보 열기
+│   └── main.js             # 흐름 제어: 인사 → 흰색 서서히 켜짐 → 3초 웃음 → 흰색 켜짐 + 서보 열기
 ├── arduino/
 │   └── servo_led/
-│       └── servo_led.ino   # 빨간/초록 LED, 서보 7~90°
+│       └── servo_led.ino   # 흰색 LED(D5), 서보 7~90°
 └── README.md
 ```
 
@@ -62,9 +62,8 @@ Be_polite_to_your_safe_box/
 
 1. `arduino/servo_led/servo_led.ino`를 Arduino IDE에서 연다.
 2. **서보**: 9번 핀  
-   **빨간 LED**: 2번 핀  
-   **초록 LED**: 3번 핀  
-   (필요하면 스케치 상단 상수에서 변경)
+   **흰색 LED**: 5번 핀 (D5)  
+   (현재 스케치는 active-low 기준: D5가 LOW일 때 LED 켜짐)
 3. 업로드한 뒤 **시리얼 모니터는 닫아 둔다** (브라우저가 시리얼을 사용).
 
 ### 2. 웹 앱 (Chrome 권장)
@@ -72,15 +71,15 @@ Be_polite_to_your_safe_box/
 1. 프로젝트 루트를 **로컬 웹 서버**로 연다 (예: `npx serve .` 또는 Live Server).
 2. Chrome에서 해당 주소로 접속해 `index.html`을 연다.
 3. **카메라 시작** → **아두이노 연결** (팝업에서 Arduino Nano 포트 선택).
-4. 순서대로: **인사** → 빨간 LED 깜빡임 → **3초 웃음 유지** → 초록 LED + 서보로 금고 열림.
+4. 순서대로: **인사** → 흰색 LED 숨쉬기 디밍(0~15) → **3초 웃음 유지** → 흰색 LED 밝기 50 + 서보로 금고 열림(15초 뒤 서서히 꺼짐).
 
 ### 시리얼 명령 (브라우저 → 아두이노)
 
 | 명령 | 설명 |
 |------|------|
-| `L0` | LED 모두 끄기 |
-| `L1` | 빨간 LED 깜빡임 (인사 감지 시) |
-| `L2` | 초록 LED 켜기, 빨간 끄기 (3초 웃음 달성 시) |
+| `L0` | LED 서서히 끄기 + 서보를 초기 각도(7°)로 복귀 |
+| `L1` | 흰색 LED 숨쉬기 디밍 (밝기 0~15) |
+| `L2` | 흰색 LED 고정 밝기 50 (3초 웃음 달성 시, 15초 후 자동으로 `L0` 복귀) |
 | `S<각도>` | 서보 각도 (7~90으로 제한) |
 | `R`  | 서보 한 번 스윕 (7°→90°→7°) — 여기서는 “열기” 시 7°→90° 사용 |
 
@@ -88,8 +87,8 @@ Be_polite_to_your_safe_box/
 
 ## 커스터마이징
 
-- **인사 감지 기준**: `main.js`의 `checkPoseAction()` (허리 숙임 기준 조정).
+- **인사 감지 기준**: `main.js`의 `checkPoseAction()` (고개 끄덕임 기준 조정).
 - **웃음 감지 기준**: `main.js`의 `SMILE_THRESHOLD`, `MOUTH_OPEN_MAX`, `SMILE_DURATION`.
-- **LED/서보 핀**: `servo_led.ino`의 `redLedPin`, `greenLedPin`, `servoPin`, `minAngle`, `maxAngle`.
+- **LED/서보 핀**: `servo_led.ino`의 `ledPin`, `servoPin`, `minAngle`, `maxAngle`.
 
 이 구조로 “금고에게 예의 바르기”를 그대로 구현할 수 있습니다.

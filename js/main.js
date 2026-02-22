@@ -1,8 +1,8 @@
 /**
  * Be polite to your safe box — 메인 오케스트레이션
  *
- * 흐름: 대기 → (인사 감지) → 빨간 LED 깜빡임 → (3초 웃음 유지) → 초록 LED + 서보로 금고 열기
- * - Pose: 허리 숙여 인사 감지
+ * 흐름: 대기 → (인사 감지) → LED 깜빡임 → (3초 웃음 유지) → LED 켜짐 + 서보로 금고 열기
+ * - Pose: 고개 끄덕임 인사 감지
  * - Facemesh: 웃음 감지 (기존 스케치와 동일 기준), 3초 유지 시 열기
  */
 (function () {
@@ -14,22 +14,40 @@
   const SMILE_THRESHOLD = 0.035;
   const MOUTH_OPEN_MAX = 0.12;
   const SMILE_DURATION = 3000; // 3초
+  const RESET_DURATION = 15000; // 15초 후 초기화
 
-  // ----- 인사 감지: 코가 어깨선보다 아래로 내려갔을 때 (허리 숙임) -----
-  const BOW_NOSE_BELOW_SHOULDER_PX = 25; // 픽셀 기준
-  const POSE_SCORE_MIN = 0.5;
+  // ----- 인사 감지: 고개 끄덕임(빠른 아래-위 움직임) -----
+  const POSE_SCORE_MIN = 0.28;
+  const NOD_DOWN_PX = 9;
+  const NOD_RETURN_PX = 4;
+  const NOD_WINDOW_MS = 700;
+  const NOD_COOLDOWN_MS = 1200;
+  const NOD_BASELINE_LERP = 0.18;
 
   // ----- 상태: 'idle' | 'red_blink' | 'green_open' -----
   let state = 'idle';
   let smileStartTime = null;
+  let noseBaselineY = null;
+  let nodPhase = 'idle';
+  let nodDownTime = 0;
+  let nodCooldownUntil = 0;
+  let resetStartedAt = null;
 
   function getEl(id) {
     return document.getElementById(id);
   }
 
   function setState(newState) {
+    const prev = state;
     state = newState;
+    if (newState === 'green_open' && prev !== 'green_open') {
+      resetStartedAt = Date.now();
+    }
+    if (newState !== 'green_open') {
+      resetStartedAt = null;
+    }
     updateStateUI();
+    updateResetCountdown();
   }
 
   function updatePoseInfo(text) {
@@ -58,6 +76,42 @@
     const el = getEl('smile-progress');
     if (!el) return;
     el.style.width = Math.round(progress * 100) + '%';
+  }
+
+  function updateResetCountdown() {
+    const infoEl = getEl('reset-info');
+    const wrapEl = getEl('reset-progress-wrap');
+    const barEl = getEl('reset-progress');
+    if (!infoEl || !wrapEl || !barEl) return;
+
+    if (state !== 'green_open' || resetStartedAt == null) {
+      infoEl.hidden = true;
+      wrapEl.hidden = true;
+      barEl.style.width = '100%';
+      return;
+    }
+
+    const elapsed = Date.now() - resetStartedAt;
+    const remainingMs = Math.max(RESET_DURATION - elapsed, 0);
+    const remainingSec = Math.ceil(remainingMs / 1000);
+    const remainingRatio = remainingMs / RESET_DURATION;
+
+    infoEl.hidden = false;
+    wrapEl.hidden = false;
+    infoEl.textContent = '초기화까지 ' + remainingSec + '초';
+    barEl.style.width = Math.round(remainingRatio * 100) + '%';
+
+    if (remainingMs <= 0) {
+      setState('idle');
+      updatePoseInfo('인사해 주세요.');
+      updateFaceInfo('대기 중');
+      updateSmileProgress(0);
+      smileStartTime = null;
+      if (ArduinoBridge.isConnected()) {
+        ArduinoBridge.setLedOff();
+        ArduinoBridge.setServo(ArduinoBridge.MIN_ANGLE);
+      }
+    }
   }
 
   /** face 예측에서 포인트 배열 얻기 */
@@ -106,23 +160,54 @@
   }
 
   /**
-   * 허리 숙여 인사: 코가 어깨 중심보다 아래에 있으면 인사로 간주
+   * 인사 감지: 코의 짧은 아래-위 움직임(고개 끄덕임)으로 판정
    */
   function checkPoseAction(poses) {
-    const pose = poses[0];
+    const pose = poses && poses[0];
     if (!pose || !pose.keypoints) return null;
 
-    const kp = (name) => pose.keypoints.find((k) => k.name === name);
+    const kp = (...names) => pose.keypoints.find((k) => names.includes(k.name));
     const nose = kp('nose');
-    const leftShoulder = kp('leftShoulder');
-    const rightShoulder = kp('rightShoulder');
 
-    if (!nose || !leftShoulder || !rightShoulder) return null;
-    if (nose.score < POSE_SCORE_MIN || leftShoulder.score < POSE_SCORE_MIN || rightShoulder.score < POSE_SCORE_MIN) return null;
+    if (!nose) return null;
+    const confidenceOf = (k) => (typeof k.confidence === 'number' ? k.confidence : k.score);
+    if (confidenceOf(nose) < POSE_SCORE_MIN) return null;
 
-    const shoulderCenterY = (leftShoulder.y + rightShoulder.y) / 2;
-    // 허리 숙이면 코가 어깨선 아래로 내려감 (y 증가)
-    if (nose.y >= shoulderCenterY + BOW_NOSE_BELOW_SHOULDER_PX) return 'bow';
+    const now = Date.now();
+    const noseY = nose.y;
+
+    if (noseBaselineY == null) {
+      noseBaselineY = noseY;
+      return null;
+    }
+
+    if (nodPhase === 'idle') {
+      noseBaselineY += (noseY - noseBaselineY) * NOD_BASELINE_LERP;
+    }
+
+    const deltaY = noseY - noseBaselineY;
+    if (now < nodCooldownUntil) return null;
+
+    if (nodPhase === 'idle') {
+      if (deltaY >= NOD_DOWN_PX) {
+        nodPhase = 'down';
+        nodDownTime = now;
+      }
+      return null;
+    }
+
+    if (now - nodDownTime > NOD_WINDOW_MS) {
+      nodPhase = 'idle';
+      return null;
+    }
+
+    if (deltaY <= NOD_RETURN_PX) {
+      nodPhase = 'idle';
+      nodCooldownUntil = now + NOD_COOLDOWN_MS;
+      noseBaselineY = noseY;
+      return 'bow';
+    }
+
     return null;
   }
 
@@ -138,7 +223,8 @@
     } else if (action) {
       updatePoseInfo(action);
     } else {
-      updatePoseInfo('감지 중');
+      if (state === 'idle') updatePoseInfo('인사해 주세요.');
+      else updatePoseInfo('감지 중');
     }
   }
 
@@ -203,7 +289,9 @@
 
       p.draw = function () {
         p.background(0);
-        if (video && video.loadedmetadata) {
+        updateResetCountdown();
+        const ready = video && video.elt && video.elt.readyState >= 2;
+        if (ready) {
           p.push();
           p.translate(p.width, 0);
           p.scale(-1, 1);
@@ -228,7 +316,7 @@
       }
       try {
         await ArduinoBridge.connect();
-        ArduinoBridge.setLedOff();
+        await ArduinoBridge.setLedOff();
         status.textContent = '아두이노: 연결됨';
         status.classList.add('connected');
         btn.textContent = '아두이노 연결 해제';

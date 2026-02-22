@@ -4,7 +4,7 @@
  * - 표정/제스처 판단은 main.js에서 처리.
  */
 const Facemesh = (function () {
-  let facemesh = null;
+  let faceMesh = null;
   let video = null;
   let onFaceCallback = null;
   let isRunning = false;
@@ -16,27 +16,32 @@ const Facemesh = (function () {
    */
   function init(videoEl, options = {}) {
     if (!videoEl || !ml5) return Promise.reject(new Error('video 또는 ml5 없음'));
+    if (typeof ml5.faceMesh !== 'function') return Promise.reject(new Error('ml5.faceMesh를 찾을 수 없음'));
     video = videoEl;
     onFaceCallback = options.onFace || null;
 
-    return new Promise((resolve, reject) => {
-      facemesh = ml5.facemesh(video, { maxFaces: 1 }, () => {
-        resolve();
-      });
-      facemesh.on('face', (results) => {
-        if (isRunning && onFaceCallback && results.length) onFaceCallback(results);
-      });
-    });
+    faceMesh = ml5.faceMesh(options.modelOptions || { maxFaces: 1, refineLandmarks: false, flipHorizontal: false });
+    if (faceMesh && faceMesh.ready && typeof faceMesh.ready.then === 'function') {
+      return faceMesh.ready;
+    }
+    return Promise.resolve();
   }
 
   /**
    * 얼굴 스트리밍 시작/중지
    */
   function start() {
+    if (!faceMesh || !video) return;
     isRunning = true;
+    faceMesh.detectStart(video, (results) => {
+      if (isRunning && onFaceCallback) onFaceCallback(results || []);
+    });
   }
 
   function stop() {
+    if (faceMesh && typeof faceMesh.detectStop === 'function') {
+      faceMesh.detectStop();
+    }
     isRunning = false;
   }
 
@@ -44,8 +49,8 @@ const Facemesh = (function () {
    * 단일 프레임에서 얼굴만 예측 (선택용)
    */
   function predict() {
-    if (!facemesh || !video) return Promise.resolve([]);
-    return facemesh.predict(video);
+    if (!faceMesh || !video || typeof faceMesh.detect !== 'function') return Promise.resolve([]);
+    return faceMesh.detect(video);
   }
 
   return {

@@ -1,6 +1,6 @@
 /**
  * Be polite to your safe box — Arduino Nano 시리얼 브릿지 (Web Serial API)
- * - LED: L0(끄기), L1(빨간 깜빡임), L2(초록 켜기)
+ * - LED: L0(서서히 끄기), L1(서서히 켜기), L2(켜기)
  * - 서보: S<각도> (7~90), R(스윕)
  */
 const ArduinoBridge = (function () {
@@ -50,12 +50,12 @@ const ArduinoBridge = (function () {
     await sendLine('L0');
   }
 
-  /** 빨간 LED 깜빡임 (인사 감지 시) */
+  /** LED 서서히 켜기 (인사 감지 시) */
   async function setLedRedBlink() {
     await sendLine('L1');
   }
 
-  /** 초록 LED 켜기 (3초 웃음 달성 시) */
+  /** LED 켜기 (3초 웃음 달성 시) */
   async function setLedGreen() {
     await sendLine('L2');
   }

@@ -6,7 +6,7 @@
   <title>Be polite to your safe box</title>
   <link rel="stylesheet" href="css/main.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
-  <script src="https://unpkg.com/ml5@1.12.2/dist/ml5.min.js"></script>
+  <script src="https://unpkg.com/ml5@1/dist/ml5.min.js"></script>
 </head>
 <body>
   <div id="app">
@@ -30,11 +30,15 @@
         <div class="smile-progress-wrap">
           <div id="smile-progress" class="smile-progress" style="width: 0%;"></div>
         </div>
+        <div id="reset-info" class="reset-info" hidden>초기화까지 15초</div>
+        <div id="reset-progress-wrap" class="reset-progress-wrap" hidden>
+          <div id="reset-progress" class="reset-progress" style="width: 100%;"></div>
+        </div>
       </div>
     </section>
 
     <footer>
-      <small>Pose(인사) · Facemesh(웃음 3초) · Arduino Nano (빨간/초록 LED, 서보 7°~90°)</small>
+      <small>Pose(인사) · Facemesh(웃음 3초) · Arduino Nano (흰색 LED D5, 서보 7°~90°)</small>
     </footer>
   </div>
 

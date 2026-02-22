@@ -1,8 +1,8 @@
 /*
  * Be polite to your safe box — Arduino Nano
- * - L0: LED 모두 끄기
- * - L1: 빨간 LED 깜빡임 (인사 감지 시)
- * - L2: 초록 LED 켜기 (3초 웃음 달성 시)
+ * - L0: LED 서서히 끄기 + 서보 초기 각도(7°) 복귀
+ * - L1: 흰색 LED 숨쉬기 디밍 (0~15)
+ * - L2: 흰색 LED 고정 밝기 50 (15초 후 L0 자동 복귀)
  * - 서보: 7~90도만 사용, S<각도>, R(스윕)
  */
 
@@ -12,36 +12,116 @@ Servo myServo;
 
 // ===== 설정 =====
 const int servoPin = 9;
-const int redLedPin = 2;
-const int greenLedPin = 3;
+const int ledPin = 5; // PWM 핀 사용 (밝기 제어)
+const bool LED_ACTIVE_LOW = true;
 const int minAngle = 7;
 const int maxAngle = 90;
 const int speedDelay = 20;
 
-// LED 모드: 0=끔, 1=빨간 깜빡임, 2=초록 켜기
-int ledMode = 0;
-unsigned long lastBlinkTime = 0;
-const unsigned long BLINK_INTERVAL = 300;
-bool redLedState = false;
+const unsigned long LED_ON_DURATION = 15000;
+const unsigned long FADE_OUT_DURATION = 1200;
+const int LED_MAX_BRIGHTNESS = 100;
+const int LED_BREATH_MIN = 0;
+const int LED_BREATH_MAX = 15;
+const int LED_SMILE_LEVEL = 50;
+const unsigned long BREATH_HALF_CYCLE_MS = 1200;
 
-void setup() {
-  Serial.begin(9600);
-  pinMode(redLedPin, OUTPUT);
-  pinMode(greenLedPin, OUTPUT);
-  digitalWrite(redLedPin, LOW);
-  digitalWrite(greenLedPin, LOW);
-  myServo.attach(servoPin);
+// LED 모드: 0=끔(페이드아웃), 1=숨쉬기 디밍, 2=고정 밝기 50
+int ledMode = 0;
+unsigned long ledOnStartTime = 0;
+unsigned long breathStartTime = 0;
+
+// 논리 밝기: 0(꺼짐) ~ LED_MAX_BRIGHTNESS
+int ledLevel = 0;
+
+// 페이드 상태
+bool isFading = false;
+unsigned long fadeStartTime = 0;
+unsigned long fadeDuration = 0;
+int fadeFrom = 0;
+int fadeTo = 0;
+
+void writeLedLevel(int level) {
+  int lv = constrain(level, 0, LED_MAX_BRIGHTNESS);
+  ledLevel = lv;
+  int pwm = LED_ACTIVE_LOW ? (255 - lv) : lv;
+  analogWrite(ledPin, pwm);
+}
+
+void startFadeTo(int targetLevel, unsigned long durationMs) {
+  int target = constrain(targetLevel, 0, LED_MAX_BRIGHTNESS);
+  if (durationMs == 0 || target == ledLevel) {
+    isFading = false;
+    writeLedLevel(target);
+    return;
+  }
+
+  isFading = true;
+  fadeStartTime = millis();
+  fadeDuration = durationMs;
+  fadeFrom = ledLevel;
+  fadeTo = target;
+}
+
+void updateFade() {
+  if (!isFading) return;
+
+  unsigned long now = millis();
+  unsigned long elapsed = now - fadeStartTime;
+  if (elapsed >= fadeDuration) {
+    isFading = false;
+    writeLedLevel(fadeTo);
+    return;
+  }
+
+  float t = (float)elapsed / (float)fadeDuration;
+  int level = fadeFrom + (int)((fadeTo - fadeFrom) * t);
+  writeLedLevel(level);
+}
+
+void updateBreathing() {
+  if (ledMode != 1) return;
+  if (BREATH_HALF_CYCLE_MS == 0) {
+    writeLedLevel(LED_BREATH_MAX);
+    return;
+  }
+
+  unsigned long fullCycle = BREATH_HALF_CYCLE_MS * 2;
+  unsigned long elapsed = (millis() - breathStartTime) % fullCycle;
+  unsigned long phase = elapsed <= BREATH_HALF_CYCLE_MS ? elapsed : (fullCycle - elapsed);
+  float ratio = (float)phase / (float)BREATH_HALF_CYCLE_MS;
+  int level = LED_BREATH_MIN + (int)((LED_BREATH_MAX - LED_BREATH_MIN) * ratio);
+  writeLedLevel(level);
+}
+
+void setIdleMode(bool smoothOff) {
+  ledMode = 0;
+  ledOnStartTime = 0;
+  if (smoothOff) {
+    startFadeTo(0, FADE_OUT_DURATION);
+  } else {
+    isFading = false;
+    writeLedLevel(0);
+  }
   myServo.write(minAngle);
 }
 
+void setup() {
+  Serial.begin(9600);
+  pinMode(ledPin, OUTPUT);
+  myServo.attach(servoPin);
+  setIdleMode(false);
+}
+
 void loop() {
-  // L1 모드일 때 빨간 LED 깜빡임
-  if (ledMode == 1) {
+  updateFade();
+  updateBreathing();
+
+  // L2 모드는 15초 유지 후 자동으로 L0(끔)으로 복귀
+  if (ledMode == 2) {
     unsigned long now = millis();
-    if (now - lastBlinkTime >= BLINK_INTERVAL) {
-      lastBlinkTime = now;
-      redLedState = !redLedState;
-      digitalWrite(redLedPin, redLedState ? HIGH : LOW);
+    if (now - ledOnStartTime >= LED_ON_DURATION) {
+      setIdleMode(true);
     }
   }
 
@@ -50,17 +130,18 @@ void loop() {
     cmd.trim();
 
     if (cmd == "L0") {
-      ledMode = 0;
-      digitalWrite(redLedPin, LOW);
-      digitalWrite(greenLedPin, LOW);
+      setIdleMode(true);
     } else if (cmd == "L1") {
       ledMode = 1;
-      digitalWrite(greenLedPin, LOW);
-      lastBlinkTime = millis();
+      ledOnStartTime = 0;
+      isFading = false;
+      breathStartTime = millis();
+      writeLedLevel(LED_BREATH_MIN);
     } else if (cmd == "L2") {
       ledMode = 2;
-      digitalWrite(redLedPin, LOW);
-      digitalWrite(greenLedPin, HIGH);
+      isFading = false;
+      writeLedLevel(LED_SMILE_LEVEL);
+      ledOnStartTime = millis();
     } else if (cmd.startsWith("S")) {
       int angle = cmd.substring(1).toInt();
       angle = constrain(angle, minAngle, maxAngle);
