@@ -15,7 +15,7 @@ const ArduinoBridge = (function () {
 
   async function connect() {
     if (!('serial' in navigator)) {
-      throw new Error('이 브라우저는 Web Serial을 지원하지 않습니다. Chrome 권장.');
+      throw new Error('This browser does not support Web Serial. Please use Chrome.');
     }
     port = await navigator.serial.requestPort();
     await port.open({ baudRate: 9600 });

@@ -64,9 +64,9 @@
     const el = getEl('info-state');
     if (!el) return;
     const labels = {
-      idle: '대기 — 인사해 주세요',
-      red_blink: '인사 감지됨 — 3초간 웃어 주세요',
-      green_open: '금고 열림',
+      idle: 'Waiting — please bow to greet',
+      red_blink: 'Bow detected — smile for 3 seconds',
+      green_open: 'Safe open',
     };
     el.textContent = labels[state] || state;
     el.className = 'state state-' + state;
@@ -98,13 +98,13 @@
 
     infoEl.hidden = false;
     wrapEl.hidden = false;
-    infoEl.textContent = '초기화까지 ' + remainingSec + '초';
+    infoEl.textContent = 'Reset in ' + remainingSec + 's';
     barEl.style.width = Math.round(remainingRatio * 100) + '%';
 
     if (remainingMs <= 0) {
       setState('idle');
-      updatePoseInfo('인사해 주세요.');
-      updateFaceInfo('대기 중');
+      updatePoseInfo('Please bow to greet.');
+      updateFaceInfo('Waiting');
       updateSmileProgress(0);
       smileStartTime = null;
       if (ArduinoBridge.isConnected()) {
@@ -215,7 +215,7 @@
     const action = checkPoseAction(poses);
 
     if (action === 'bow' && state === 'idle') {
-      updatePoseInfo('인사 감지됨');
+      updatePoseInfo('Bow detected');
       setState('red_blink');
       if (ArduinoBridge.isConnected()) {
         ArduinoBridge.setLedRedBlink();
@@ -223,8 +223,8 @@
     } else if (action) {
       updatePoseInfo(action);
     } else {
-      if (state === 'idle') updatePoseInfo('인사해 주세요.');
-      else updatePoseInfo('감지 중');
+      if (state === 'idle') updatePoseInfo('Please bow to greet.');
+      else updatePoseInfo('Detecting');
     }
   }
 
@@ -237,12 +237,12 @@
         const elapsed = Date.now() - smileStartTime;
         const progress = Math.min(elapsed / SMILE_DURATION, 1);
         updateSmileProgress(progress);
-        updateFaceInfo('웃음 유지 ' + (progress * 3).toFixed(1) + ' / 3.0초');
+        updateFaceInfo('Smile ' + (progress * 3).toFixed(1) + ' / 3.0s');
 
         if (progress >= 1) {
           setState('green_open');
           smileStartTime = null;
-          updateFaceInfo('웃음 완료 — 금고 열림');
+          updateFaceInfo('Smile complete — safe open');
           if (ArduinoBridge.isConnected()) {
             ArduinoBridge.setLedGreen();
             ArduinoBridge.openSafe();
@@ -251,13 +251,13 @@
       } else {
         smileStartTime = null;
         updateSmileProgress(0);
-        updateFaceInfo('3초간 웃어 주세요');
+        updateFaceInfo('Smile for 3 seconds');
       }
     } else if (state === 'green_open') {
-      updateFaceInfo('금고 열림');
+      updateFaceInfo('Safe open');
     } else {
-      if (smiling) updateFaceInfo('웃음 감지');
-      else updateFaceInfo('대기 중');
+      if (smiling) updateFaceInfo('Smile detected');
+      else updateFaceInfo('Waiting');
     }
   }
 
@@ -309,20 +309,20 @@
       const status = getEl('status-arduino');
       if (ArduinoBridge.isConnected()) {
         ArduinoBridge.disconnect();
-        status.textContent = '아두이노: 미연결';
+        status.textContent = 'Arduino: disconnected';
         status.classList.remove('connected');
-        btn.textContent = '아두이노 연결';
+        btn.textContent = 'Connect Arduino';
         return;
       }
       try {
         await ArduinoBridge.connect();
         await ArduinoBridge.setLedOff();
-        status.textContent = '아두이노: 연결됨';
+        status.textContent = 'Arduino: connected';
         status.classList.add('connected');
-        btn.textContent = '아두이노 연결 해제';
+        btn.textContent = 'Disconnect Arduino';
       } catch (e) {
         console.error(e);
-        status.textContent = '아두이노: 연결 실패';
+        status.textContent = 'Arduino: connection failed';
       }
     });
   }

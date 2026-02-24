@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,25 +12,25 @@
   <div id="app">
     <header>
       <h1>Be polite to your safe box</h1>
-      <p>금고에게 예의 바르게 — 인사하고, 3초 웃으면 금고가 열립니다</p>
+      <p>Bow to greet, then smile for 3 seconds to open the safe</p>
     </header>
 
     <section class="controls">
-      <button id="btn-cam" type="button">카메라 시작</button>
-      <button id="btn-arduino" type="button">아두이노 연결</button>
-      <span id="status-arduino" class="status">아두이노: 미연결</span>
+      <button id="btn-cam" type="button">Start camera</button>
+      <button id="btn-arduino" type="button">Connect Arduino</button>
+      <span id="status-arduino" class="status">Arduino: disconnected</span>
     </section>
 
     <section class="canvas-wrap">
       <div id="canvas-container"></div>
       <div id="overlay-info">
-        <div id="info-state" class="state state-idle">대기 — 인사해 주세요</div>
-        <div id="info-pose">Pose: 대기 중</div>
-        <div id="info-face">Face: 대기 중</div>
+        <div id="info-state" class="state state-idle">Waiting — please bow to greet</div>
+        <div id="info-pose">Pose: waiting</div>
+        <div id="info-face">Face: waiting</div>
         <div class="smile-progress-wrap">
           <div id="smile-progress" class="smile-progress" style="width: 0%;"></div>
         </div>
-        <div id="reset-info" class="reset-info" hidden>초기화까지 15초</div>
+        <div id="reset-info" class="reset-info" hidden>Reset in 15s</div>
         <div id="reset-progress-wrap" class="reset-progress-wrap" hidden>
           <div id="reset-progress" class="reset-progress" style="width: 100%;"></div>
         </div>
@@ -38,7 +38,7 @@
     </section>
 
     <footer>
-      <small>Pose(인사) · Facemesh(웃음 3초) · Arduino Nano (흰색 LED D5, 서보 7°~90°)</small>
+      <small>Pose (bow) · Facemesh (smile 3s) · Arduino Nano (LED D5, servo 7°–90°)</small>
     </footer>
   </div>
 
